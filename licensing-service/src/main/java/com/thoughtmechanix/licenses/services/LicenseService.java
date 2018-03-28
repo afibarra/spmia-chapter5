@@ -22,25 +22,22 @@ import java.util.UUID;
 public class LicenseService {
     private static final Logger logger = LoggerFactory.getLogger(LicenseService.class);
     @Autowired
-    private LicenseRepository licenseRepository;
-
-    @Autowired
     ServiceConfig config;
-
     @Autowired
     OrganizationRestTemplateClient organizationRestClient;
+    @Autowired
+    private LicenseRepository licenseRepository;
 
-
-    public License getLicense(String organizationId,String licenseId) {
+    public License getLicense(String organizationId, String licenseId) {
         License license = licenseRepository.findByOrganizationIdAndLicenseId(organizationId, licenseId);
 
         Organization org = getOrganization(organizationId);
 
         return license
-                .withOrganizationName( org.getName())
-                .withContactName( org.getContactName())
-                .withContactEmail( org.getContactEmail() )
-                .withContactPhone( org.getContactPhone() )
+                .withOrganizationName(org.getName())
+                .withContactName(org.getContactName())
+                .withContactEmail(org.getContactEmail())
+                .withContactPhone(org.getContactPhone())
                 .withComment(config.getExampleProperty());
     }
 
@@ -49,15 +46,15 @@ public class LicenseService {
         return organizationRestClient.getOrganization(organizationId);
     }
 
-    private void randomlyRunLong(){
-      Random rand = new Random();
+    private void randomlyRunLong() {
+        Random rand = new Random();
 
-      int randomNum = rand.nextInt((3 - 1) + 1) + 1;
+        int randomNum = rand.nextInt((3 - 1) + 1) + 1;
 
-      if (randomNum==3) sleep();
+        if (randomNum == 3) sleep();
     }
 
-    private void sleep(){
+    private void sleep() {
         try {
             Thread.sleep(11000);
         } catch (InterruptedException e) {
@@ -65,48 +62,59 @@ public class LicenseService {
         }
     }
 
-    @HystrixCommand(//fallbackMethod = "buildFallbackLicenseList",
+//    @HystrixCommand(//fallbackMethod = "buildFallbackLicenseList",
+//            threadPoolKey = "licenseByOrgThreadPool",
+//            threadPoolProperties =
+//                    {@HystrixProperty(name = "coreSize", value = "30"),
+//                            @HystrixProperty(name = "maxQueueSize", value = "10")},
+//            commandProperties = {
+//                    @HystrixProperty(name = "circuitBreaker.requestVolumeThreshold", value = "10"),
+//                    @HystrixProperty(name = "circuitBreaker.errorThresholdPercentage", value = "75"),
+//                    @HystrixProperty(name = "circuitBreaker.sleepWindowInMilliseconds", value = "7000"),
+//                    @HystrixProperty(name = "metrics.rollingStats.timeInMilliseconds", value = "15000"),
+//                    @HystrixProperty(name = "metrics.rollingStats.numBuckets", value = "5")}
+//    )
+    @HystrixCommand(
+            fallbackMethod = "buildFallbackLicenseList",
+            commandProperties = {
+                    @HystrixProperty(name = "execution.isolation.thread.timeoutInMilliseconds", value = "1000")
+            },
             threadPoolKey = "licenseByOrgThreadPool",
-            threadPoolProperties =
-                    {@HystrixProperty(name = "coreSize",value="30"),
-                     @HystrixProperty(name="maxQueueSize", value="10")},
-            commandProperties={
-                     @HystrixProperty(name="circuitBreaker.requestVolumeThreshold", value="10"),
-                     @HystrixProperty(name="circuitBreaker.errorThresholdPercentage", value="75"),
-                     @HystrixProperty(name="circuitBreaker.sleepWindowInMilliseconds", value="7000"),
-                     @HystrixProperty(name="metrics.rollingStats.timeInMilliseconds", value="15000"),
-                     @HystrixProperty(name="metrics.rollingStats.numBuckets", value="5")}
+            threadPoolProperties = {
+                    @HystrixProperty(name = "coreSize", value = "30"),
+                    @HystrixProperty(name = "maxQueueSize", value = "10")
+            }
     )
-    public List<License> getLicensesByOrg(String organizationId){
+    public List<License> getLicensesByOrg(String organizationId) {
         logger.debug("LicenseService.getLicensesByOrg  Correlation id: {}", UserContextHolder.getContext().getCorrelationId());
         randomlyRunLong();
 
         return licenseRepository.findByOrganizationId(organizationId);
     }
 
-    private List<License> buildFallbackLicenseList(String organizationId){
+    private List<License> buildFallbackLicenseList(String organizationId) {
         List<License> fallbackList = new ArrayList<>();
         License license = new License()
                 .withId("0000000-00-00000")
-                .withOrganizationId( organizationId )
+                .withOrganizationId(organizationId)
                 .withProductName("Sorry no licensing information currently available");
 
         fallbackList.add(license);
         return fallbackList;
     }
 
-    public void saveLicense(License license){
-        license.withId( UUID.randomUUID().toString());
+    public void saveLicense(License license) {
+        license.withId(UUID.randomUUID().toString());
 
         licenseRepository.save(license);
     }
 
-    public void updateLicense(License license){
-      licenseRepository.save(license);
+    public void updateLicense(License license) {
+        licenseRepository.save(license);
     }
 
-    public void deleteLicense(License license){
-        licenseRepository.delete( license.getLicenseId());
+    public void deleteLicense(License license) {
+        licenseRepository.delete(license.getLicenseId());
     }
 
 }
